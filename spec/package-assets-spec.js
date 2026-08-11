@@ -94,6 +94,10 @@ describe("linter-panel package assets", () => {
     expect(pkg.providedServices["linter.ui"].versions["1.0.0"]).toBe("provideLinterUI");
     expect(pkg.consumedServices["status-bar"].versions["^1.0.0"]).toBe("consumeStatusBar");
     expect(pkg.deserializers.LinterPanel).toBe("deserializePanel");
+    // A deserializer runs during window startup without activating the package,
+    // so what it needs is built in `initialize`. Exporting one is part of
+    // declaring the other.
+    expect(typeof require("../lib/main").initialize).toBe("function");
   });
 
   it("scopes every config key to itself", () => {
