@@ -1,0 +1,96 @@
+{
+  "name": "linter-panel",
+  "author": "lumine-code",
+  "main": "./lib/main.js",
+  "files": [
+    "keymaps",
+    "lib",
+    "menus",
+    "spec",
+    "styles"
+  ],
+  "version": "1.0.0",
+  "description": "Show lint messages in a sortable panel and on the status bar.",
+  "repository": "https://github.com/lumine-code/linter-panel",
+  "bugs": {
+    "url": "https://github.com/lumine-code/linter-panel/issues"
+  },
+  "homepage": "https://github.com/lumine-code/linter-panel#readme",
+  "license": "MIT",
+  "keywords": [
+    "diagnostics",
+    "errors",
+    "warnings",
+    "problems",
+    "status-bar",
+    "dock"
+  ],
+  "engines": {
+    "lumine": "^1.0.0"
+  },
+  "backgroundTips": [
+    "You can read every lint message in the project in one sortable panel with {{ 'linter-panel:toggle-focus' | keystroke }}"
+  ],
+  "deserializers": {
+    "LinterPanel": "deserializePanel"
+  },
+  "providedServices": {
+    "linter.ui": {
+      "versions": {
+        "1.0.0": "provideLinterUI"
+      }
+    }
+  },
+  "consumedServices": {
+    "status-bar": {
+      "versions": {
+        "^1.0.0": "consumeStatusBar"
+      }
+    }
+  },
+  "dependencies": {
+    "@lumine-code/etch": "github:lumine-code/etch#ad65d4e2a81aa70839069309fa532635bc007b7e"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.8.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-n": "^18.2.2",
+    "globals": "^17.9.0",
+    "prettier": "^3.9.6"
+  },
+  "scripts": {
+    "test": "lumine --test spec",
+    "lint": "eslint . --max-warnings 0",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "configSchema": {
+    "defaultSortMethod": {
+      "title": "Default Sort Method",
+      "description": "Choose the default sorting method for linter messages",
+      "type": "string",
+      "enum": [
+        {
+          "value": "position",
+          "description": "Sort by line number only"
+        },
+        {
+          "value": "severity",
+          "description": "Sort by severity (error, warning, info, hint) then line number"
+        },
+        {
+          "value": "provider",
+          "description": "Sort by provider name alphabetically"
+        }
+      ],
+      "default": "position"
+    },
+    "statusMode": {
+      "title": "Status-bar item always visible",
+      "description": "When disabled, the status-bar item is hidden while there are no messages",
+      "type": "boolean",
+      "default": true
+    }
+  }
+}
