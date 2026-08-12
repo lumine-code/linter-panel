@@ -79,7 +79,9 @@ function fakeHub({ messages = () => [], current = null, editor = () => null } = 
   return {
     getMessages: () => messages(),
     getCurrentMessages: () => (current ? current() : messages()),
-    getCursorEditor: () => editor(),
+    // `null`, never `undefined`: the contract says `TextEditor | null`, and a
+    // stand-in that is loose about it lets the real thing be too.
+    getCursorEditor: () => editor() ?? null,
     getSeverities: () => SEVERITIES,
     revealMessage: () => {},
     deleteMessages: () => {},
