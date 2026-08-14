@@ -2,28 +2,20 @@
 
 Show lint messages in a sortable panel and on the status bar.
 
-The front end for the [linter](https://github.com/lumine-code/linter) package. Without it the
-linter still underlines, marks the gutter and answers hovers; with it every message the project
-holds is one list away.
+The front end for the [linter](https://github.com/lumine-code/linter) package. Without it the linter still underlines, marks the gutter and answers hovers; with it every message the project holds is one list away.
 
 ## Features
 
-- **Sortable panel**: a table of every message, sorted by severity, position or provider, with a
-  filter per severity and a keyboard cursor once the panel has focus.
+- **Sortable panel**: a table of every message, sorted by severity, position or provider, with a filter per severity and a keyboard cursor once the panel has focus.
 - **File and project view**: show only the active item's messages, or everything the project holds.
-- **Status bar**: a count per severity, which switches view mode on a middle click and opens the
-  panel on a left click.
-- **Message detail**: each row carries the provider's long form beside the excerpt, such as a rule
-  code, resolving a lazy one on demand and linking out to the provider's documentation.
-- **Notebook positions**: a message that names a cell is labelled and sorted by it, so a diagnostic
-  in a notebook reads as `[cell]:line:col`.
-- **Windowed rendering**: only the rows the viewport can show are built, so a project with tens of
-  thousands of messages costs what one screen costs.
+- **Status bar**: a count per severity, which switches view mode on a middle click and opens the panel on a left click.
+- **Message detail**: each row carries the provider's long form beside the excerpt, such as a rule code, resolving a lazy one on demand and linking out to the provider's documentation.
+- **Notebook positions**: a message that names a cell is labelled and sorted by it, so a diagnostic in a notebook reads as `[cell]:line:col`.
+- **Windowed rendering**: only the rows the viewport can show are built, so a project with tens of thousands of messages costs what one screen costs.
 
 ## Installation
 
-To install `linter-panel` search for _linter-panel_ in the Install pane of the Lumine settings or
-run `lumine --install lumine-code/linter-panel`.
+To install `linter-panel` search for it in the Install pane of the Lumine settings, or run the command `lumine --install lumine-code/linter-panel`.
 
 ## Commands
 
@@ -57,14 +49,12 @@ Restyle the panel from your `styles.css`:
 }
 ```
 
-The row height is read back in JavaScript to decide how many rows the viewport wants, so it has to
-resolve to a length.
+The row height is read back in JavaScript to decide how many rows the viewport wants, so it has to resolve to a length.
 
 ## Services
 
-- **linter.ui** (`1.0.0`): provided to receive the messages the linter holds, and the handle it
-  answers questions about them through.
-- **status-bar** (`^1.0.0`): consumed to show the message count per severity.
+- `linter.ui`: provided to receive the messages the linter holds, and the handle it answers questions about them through.
+- `status-bar`: consumed to show the message count per severity.
 
 ## Contributing
 
