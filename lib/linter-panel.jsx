@@ -104,8 +104,14 @@ class LinterPanel {
     );
     this._disposables.add(
       lumine.commands.add(this.element, {
-        "linter-panel:copy-description": () => this._copyDescription(),
-        "linter-panel:copy-details": () => this._copyDetails(),
+        "linter-panel:copy-description": {
+          description: "Copy the selected message's text to the clipboard.",
+          didDispatch: () => this._copyDescription(),
+        },
+        "linter-panel:copy-details": {
+          description: "Copy the selected message with its file and line.",
+          didDispatch: () => this._copyDetails(),
+        },
         "core:move-up": (e) => {
           e.stopPropagation();
           this._moveFocusUp();
