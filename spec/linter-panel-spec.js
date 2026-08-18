@@ -265,7 +265,7 @@ describe("lib/linter-panel", () => {
       // definite height, never scrolls, and the window is the whole list. The
       // row height and the scroll container are the subject here, so the real
       // rules have to be in the document.
-      stylesheet = lumine.themes.requireStylesheet(require.resolve("../styles/linter-panel.css"));
+      stylesheet = lumine.themes.requireStylesheet(require.resolve("../styles/main.css"));
       // The panel is height:100% of whatever holds it, and the spec's wrapper
       // has no height to inherit.
       panel.element.style.height = "300px";

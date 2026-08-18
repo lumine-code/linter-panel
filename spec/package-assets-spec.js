@@ -19,14 +19,14 @@ const parseJsonc = (rel) =>
 // its own, and nothing it needs was left behind.
 describe("linter-panel package assets", () => {
   it("ships keymaps and menus as JSONC, not CSON or plain JSON", () => {
-    expect(exists("keymaps/linter-panel.jsonc")).toBe(true);
-    expect(exists("menus/linter-panel.jsonc")).toBe(true);
-    expect(exists("keymaps/linter-panel.json")).toBe(false);
-    expect(exists("menus/linter-panel.json")).toBe(false);
+    expect(exists("keymaps/main.jsonc")).toBe(true);
+    expect(exists("menus/main.jsonc")).toBe(true);
+    expect(exists("keymaps/main.json")).toBe(false);
+    expect(exists("menus/main.json")).toBe(false);
   });
 
   it("claims alt-l for the reveal tier, on its own command", () => {
-    const keymap = parseJsonc("keymaps/linter-panel.jsonc");
+    const keymap = parseJsonc("keymaps/main.jsonc");
     expect(keymap["lumine-workspace"]["alt-l"]).toBe("linter-panel:toggle-focus");
     // The panel's own keys sit under its root class, never at workspace scope.
     expect(keymap[".linter-panel"]["escape"]).toBe("core:cancel");
@@ -34,14 +34,14 @@ describe("linter-panel package assets", () => {
   });
 
   it("names only its own commands, in the menu and the keymap", () => {
-    const files = ["menus/linter-panel.jsonc", "keymaps/linter-panel.jsonc"];
+    const files = ["menus/main.jsonc", "keymaps/main.jsonc"];
     for (const file of files) {
       const source = read(file);
       // `linter:` would be the hub's namespace. `linter-panel:` starts with it,
       // so the check has to look for the colon that ends the bare name.
       expect(source.replace(/linter-panel:/g, "")).not.toContain("linter:");
     }
-    const menu = parseJsonc("menus/linter-panel.jsonc");
+    const menu = parseJsonc("menus/main.jsonc");
     const flat = JSON.stringify(menu);
     expect(flat).toContain("linter-panel:toggle");
     // Menu entries must use the singular `command` key.
@@ -49,7 +49,7 @@ describe("linter-panel package assets", () => {
   });
 
   it("puts the row copy commands in a context menu, fenced by separators", () => {
-    const menu = parseJsonc("menus/linter-panel.jsonc");
+    const menu = parseJsonc("menus/main.jsonc");
     const rows = menu["context-menu"][".linter-panel .linter-row"];
     expect(rows[0].type).toBe("separator");
     expect(rows[rows.length - 1].type).toBe("separator");
@@ -60,8 +60,8 @@ describe("linter-panel package assets", () => {
   });
 
   it("ships a CSS stylesheet built on custom properties, not Less", () => {
-    expect(exists("styles/linter-panel.css")).toBe(true);
-    const css = read("styles/linter-panel.css");
+    expect(exists("styles/main.css")).toBe(true);
+    const css = read("styles/main.css");
     expect(css).toContain("var(--");
     // Check the code, not the explanatory header comment, for Less leftovers.
     const cssWithoutComments = css.replace(/\/\*[\s\S]*?\*\//g, "");
@@ -70,7 +70,7 @@ describe("linter-panel package assets", () => {
   });
 
   it("carries the panel and the status tile, and none of the hub's decorations", () => {
-    const css = read("styles/linter-panel.css");
+    const css = read("styles/main.css");
     expect(css).toContain(".linter-panel {");
     expect(css).toMatch(/\.linter-status\s*\{[^}]*border-left:\s*2px solid transparent;/);
     expect(css).toMatch(/&\.project-mode\s*\{[^}]*border-color:\s*var\(--text-color-highlight\);/);
@@ -81,7 +81,7 @@ describe("linter-panel package assets", () => {
   });
 
   it("resolves the row height to a length, because the panel reads it back", () => {
-    const css = read("styles/linter-panel.css");
+    const css = read("styles/main.css");
     expect(css).toMatch(/--linter-row-height:\s*[\d.]+(em|px|rem)/);
   });
 
