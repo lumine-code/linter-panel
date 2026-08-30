@@ -747,10 +747,10 @@ class LinterPanel {
     return { commit: finish, rollback: finish };
   }
 
-  toggle(event) {
+  toggle() {
     const refocus = lumine.workspace.getActivePaneItem() != this;
-    const activeDocument = event?.target?.ownerDocument || this.element.ownerDocument;
-    const prev = activeDocument.activeElement;
+    const surface = lumine.workspace.getActiveWindowSurface();
+    const prev = lumine.dom.activeElementFor(surface || this.element);
     return lumine.workspace.toggle(this).then(() => {
       if (refocus && prev?.isConnected) {
         prev.focus();
