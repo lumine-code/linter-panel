@@ -82,9 +82,11 @@ class LinterPanel {
       // The viewport height decides how many rows are wanted, and the row height
       // is an em, so both move when the dock is resized or the font changes.
       // Drop the measurement so the next one is taken against the new layout.
-      this._resizeObserver = null;
-      this._resizeObserverWindow = null;
-      this._bindResizeObserver();
+      this._resizeObserver = new ResizeObserver(() => {
+        this._rowHeight = 0;
+        this._onScroll();
+      });
+      this._resizeObserver.observe(scrollContainer);
     }
 
     // Register context menu and keyboard navigation commands
@@ -424,7 +426,10 @@ class LinterPanel {
     if (this._disposables) {
       this._disposables.dispose();
     }
-    this._disconnectResizeObserver();
+    if (this._resizeObserver) {
+      this._resizeObserver.disconnect();
+      this._resizeObserver = null;
+    }
     this._scrollContainer()?.removeEventListener("scroll", this._onScroll);
     const destroyed = etch.destroy(this);
     // A pane only drops an item it is told about, and the package only forgets
@@ -432,31 +437,6 @@ class LinterPanel {
     this.emitter.emit("did-destroy");
     this.emitter.dispose();
     return destroyed;
-  }
-
-  _bindResizeObserver() {
-    const scrollContainer = this._scrollContainer();
-    const domWindow = this.element.ownerDocument.defaultView;
-    if (!scrollContainer || !domWindow) return;
-    if (this._resizeObserver && this._resizeObserverWindow === domWindow) return;
-
-    this._disconnectResizeObserver();
-    this._resizeObserverWindow = domWindow;
-    this._resizeObserver = new domWindow.ResizeObserver(() => {
-      this._rowHeight = 0;
-      this._onScroll();
-    });
-    this._resizeObserver.observe(scrollContainer);
-  }
-
-  _disconnectResizeObserver() {
-    try {
-      this._resizeObserver?.disconnect();
-    } catch {
-      // Recovery can begin after the owning native Window has closed.
-    }
-    this._resizeObserver = null;
-    this._resizeObserverWindow = null;
   }
 
   onDidDestroy(callback) {
@@ -737,18 +717,13 @@ class LinterPanel {
     return ["center", "bottom"];
   }
 
-  beginWindowSurfaceTransition() {
-    this._disconnectResizeObserver();
-    const finish = () => {
-      this._bindResizeObserver();
-      this._rowHeight = 0;
-      return this.update();
-    };
-    return { commit: finish, rollback: finish };
-  }
-
   toggle() {
+    const refocus = lumine.workspace.getActivePaneItem() != this;
+    let prev = document.activeElement;
     return lumine.workspace.toggle(this).then(() => {
+      if (refocus) {
+        prev.focus();
+      }
       // Nothing was rendered while the panel was off screen, so this is the
       // render that has rows. readAfterUpdate takes the current row from it and
       // scrolls to it, which is what this used to ask for directly.
@@ -1001,7 +976,7 @@ class LinterPanel {
   }
 
   toggleFocus() {
-    if (this.element.contains(this.element.ownerDocument.activeElement)) {
+    if (this.element.contains(document.activeElement)) {
       this._cancelFocus();
       return Promise.resolve();
     }
