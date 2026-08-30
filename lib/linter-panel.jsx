@@ -120,7 +120,7 @@ class LinterPanel {
         },
         "core:confirm": (e) => {
           e.stopPropagation();
-          this._confirmFocused();
+          return this._confirmFocused();
         },
         "core:cancel": (e) => {
           e.stopPropagation();
@@ -965,31 +965,32 @@ class LinterPanel {
     if (!message) return;
     this._setFocusedMessage(null);
     if (this.pkg.viewMode === "project") {
-      this._openMessage(message);
+      return this._openMessage(message);
     } else {
-      this.pkg.revealMessage(message);
+      return this.pkg.revealMessage(message);
     }
   }
 
   // Project mode navigates to a message that may belong to any file, so it opens
   // one. A message located by buffer has no path to open: it can only be
   // revealed in an editor that is still showing that buffer.
-  _openMessage(message) {
+  async _openMessage(message) {
     const buffer = message.location.buffer;
     if (buffer) {
       const editor = editorForBuffer(buffer);
       if (!editor) return;
-      const pane = lumine.workspace.paneForItem(editor);
-      if (pane) pane.activateItem(editor);
+      const opened = await lumine.workspace.open(editor, { searchAllPanes: true });
+      if (!opened) return;
       editor.setCursorBufferPosition(message.location.position.start);
       editor.element.focus();
       return;
     }
 
-    lumine.workspace.open(message.location.file, {
+    return lumine.workspace.open(message.location.file, {
       initialLine: message.location.position.start.row,
       initialColumn: message.location.position.start.column,
       pending: true,
+      searchAllPanes: true,
     });
   }
 

@@ -575,13 +575,13 @@ describe("lib/linter-panel", () => {
       expect(row.querySelector(".linter-file-path").textContent).toBe("untitled");
     });
 
-    it("reveals it in the editor holding the buffer instead of opening a path", async () => {
+    it("reveals it through the workspace in the editor holding the buffer", async () => {
       const open = spyOn(lumine.workspace, "open").and.callThrough();
       await publishBufferMessage();
 
-      panel.element.querySelector(".linter-row").click();
+      await panel._openMessage(messages[0]);
 
-      expect(open).not.toHaveBeenCalled();
+      expect(open).toHaveBeenCalledWith(editor, { searchAllPanes: true });
       expect(editor.getCursorBufferPosition()).toEqual([0, 6]);
     });
 
