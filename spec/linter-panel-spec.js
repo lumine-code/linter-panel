@@ -56,6 +56,50 @@ describe("lib/linter-panel", () => {
     await panel.update();
   };
 
+  describe("window surfaces", () => {
+    it("rebinds viewport observation and focus checks in the destination Document", async () => {
+      lumine.initializeDetachedPaneSurfaces({ force: true });
+      panel.element.remove();
+      const tiledPane = lumine.workspace.getCenter().getActiveTiledPane();
+      tiledPane.addItem(panel);
+      tiledPane.activateItem(panel);
+      let detachedPane = null;
+
+      try {
+        const primaryObserver = panel._resizeObserver;
+        expect(primaryObserver instanceof ResizeObserver).toBe(true);
+        spyOn(primaryObserver, "disconnect").and.callThrough();
+
+        detachedPane = await lumine.workspace.detachPaneItem(panel, { show: false });
+        const detachedSurface = lumine.workspace.getWindowSurface(panel);
+
+        expect(panel.element.ownerDocument).toBe(detachedSurface.document);
+        expect(panel._resizeObserver instanceof detachedSurface.window.ResizeObserver).toBe(true);
+        expect(primaryObserver.disconnect).toHaveBeenCalledTimes(1);
+
+        panel.element.focus();
+        expect(detachedSurface.document.activeElement).toBe(panel.element);
+        const cancelFocus = spyOn(panel, "_cancelFocus");
+        await panel.toggleFocus();
+        expect(cancelFocus).toHaveBeenCalled();
+
+        const detachedObserver = panel._resizeObserver;
+        spyOn(detachedObserver, "disconnect").and.callThrough();
+        await lumine.workspace.attachDetachedPane(detachedPane);
+        detachedPane = null;
+
+        expect(panel._resizeObserver instanceof ResizeObserver).toBe(true);
+        expect(detachedObserver.disconnect).toHaveBeenCalledTimes(1);
+      } finally {
+        if (detachedPane?.isAlive?.()) await lumine.workspace.attachDetachedPane(detachedPane);
+        const ownerPane = lumine.workspace.paneForItem(panel);
+        ownerPane?.removeItem(panel, true);
+        jasmine.attachToDOM(panel.element);
+        lumine.initializeDetachedPaneSurfaces();
+      }
+    });
+  });
+
   describe("the keyboard cursor", () => {
     const focusedRows = () => panel.element.querySelectorAll(".linter-row.focused").length;
     const focusedText = () =>
