@@ -56,6 +56,25 @@ describe("lib/linter-panel", () => {
     await panel.update();
   };
 
+  it("keeps the focus chosen by the workspace when toggling the panel", async () => {
+    const invokingElement = document.createElement("button");
+    const revealedElement = document.createElement("button");
+    document.body.append(invokingElement, revealedElement);
+    invokingElement.focus();
+    const restoreInvokingFocus = spyOn(invokingElement, "focus").and.callThrough();
+    spyOn(lumine.workspace, "toggle").and.callFake(async () => revealedElement.focus());
+
+    try {
+      await panel.toggle();
+
+      expect(restoreInvokingFocus).not.toHaveBeenCalled();
+      expect(document.activeElement).toBe(revealedElement);
+    } finally {
+      invokingElement.remove();
+      revealedElement.remove();
+    }
+  });
+
   describe("window surfaces", () => {
     it("rebinds viewport observation and focus checks in the destination Document", async () => {
       lumine.initializeDetachedPaneSurfaces({ force: true });

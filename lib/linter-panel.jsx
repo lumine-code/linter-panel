@@ -748,13 +748,7 @@ class LinterPanel {
   }
 
   toggle() {
-    const refocus = lumine.workspace.getActivePaneItem() != this;
-    const surface = lumine.workspace.getActiveWindowSurface();
-    const prev = lumine.dom.activeElementFor(surface || this.element);
     return lumine.workspace.toggle(this).then(() => {
-      if (refocus && prev?.isConnected) {
-        prev.focus();
-      }
       // Nothing was rendered while the panel was off screen, so this is the
       // render that has rows. readAfterUpdate takes the current row from it and
       // scrolls to it, which is what this used to ask for directly.
