@@ -177,7 +177,7 @@
         display: flex;
         align-items: center;
         padding: 0 0.5em;
-        cursor: pointer;
+        cursor: default;
         user-select: none;
         color: var(--text-color-subtle);
         border-left: 1px solid var(--base-border-color);
@@ -206,7 +206,7 @@
         margin: 0;
         width: 15px;
         flex: 0 0 auto;
-        cursor: pointer;
+        cursor: default;
         border-left: 1px solid var(--base-border-color);
         font-size: 0.9em;
         transition: background-color 0.2s;
@@ -322,7 +322,6 @@
         color: var(--text-color-subtle);
         background-color: rgb(from var(--background-color-highlight) r g b / 0.5);
         border-radius: 3px;
-        cursor: pointer;
         text-decoration: none;
         white-space: nowrap;
         transition:
@@ -333,6 +332,14 @@
           color: var(--text-color-highlight);
           background-color: var(--background-color-highlight);
         }
+      }
+
+      .linter-detail-toggle {
+        cursor: default;
+      }
+
+      .linter-more-info {
+        cursor: pointer;
       }
     }
 
