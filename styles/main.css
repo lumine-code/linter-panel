@@ -357,7 +357,7 @@
        * hover feedback: rgb(from transparent r g b / 0.08) is a faint black. */
       --linter-severity-background: transparent;
       transition: background-color 0.15s ease-out;
-      cursor: pointer;
+      cursor: default;
 
       &.error {
         --linter-severity-background: var(--background-color-error);
