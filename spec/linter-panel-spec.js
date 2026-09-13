@@ -56,6 +56,11 @@ describe("lib/linter-panel", () => {
     await panel.update();
   };
 
+  it("keeps the panel in the bottom dock", () => {
+    expect(panel.getDefaultLocation()).toBe("bottom");
+    expect(panel.getAllowedLocations()).toEqual(["bottom"]);
+  });
+
   describe("the keyboard cursor", () => {
     const focusedRows = () => panel.element.querySelectorAll(".linter-row.focused").length;
     const focusedText = () =>

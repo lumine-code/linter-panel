@@ -714,7 +714,7 @@ class LinterPanel {
   }
 
   getAllowedLocations() {
-    return ["center", "bottom"];
+    return ["bottom"];
   }
 
   toggle() {
