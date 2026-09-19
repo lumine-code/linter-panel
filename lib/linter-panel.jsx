@@ -5,6 +5,16 @@ const { CompositeDisposable, Emitter } = require("lumine");
 const { renderExcerpt, messageSubject, editorForBuffer } = require("./helpers");
 
 const PANEL_URI = "lumine://linter-panel";
+const EXTERNAL_URL_PROTOCOLS = new Set(["http:", "https:", "mailto:"]);
+
+const externalUrl = (value) => {
+  try {
+    const url = new URL(value);
+    return EXTERNAL_URL_PROTOCOLS.has(url.protocol) ? url.href : null;
+  } catch {
+    return null;
+  }
+};
 
 class LinterPanel {
   constructor(pkg) {
@@ -183,7 +193,12 @@ class LinterPanel {
     if (moreInfo) {
       event.stopPropagation();
       if (moreInfo.dataset.url) {
-        lumine.shell.openExternal(moreInfo.dataset.url);
+        void lumine.shell.openExternal(moreInfo.dataset.url).catch((error) => {
+          lumine.notifications.addWarning("Unable to open the linter documentation.", {
+            detail: error.message,
+            dismissable: true,
+          });
+        });
       }
       return;
     }
@@ -634,9 +649,10 @@ class LinterPanel {
       } else if (this.pkg.hasLazyDescription(message)) {
         descriptionContent.push(<a class="linter-detail-toggle">details</a>);
       }
-      if (message.url) {
+      const moreInfoURL = externalUrl(message.url);
+      if (moreInfoURL) {
         descriptionContent.push(
-          <a class="linter-more-info" dataset={{ url: message.url }} title={message.url}>
+          <a class="linter-more-info" dataset={{ url: moreInfoURL }} title={moreInfoURL}>
             more info
           </a>,
         );

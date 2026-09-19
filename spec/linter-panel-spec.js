@@ -229,7 +229,7 @@ describe("lib/linter-panel", () => {
     });
 
     it("opens the message url externally instead of revealing the message", async () => {
-      spyOn(lumine.shell, "openExternal");
+      spyOn(lumine.shell, "openExternal").and.resolveTo();
       const reveal = spyOn(front, "revealMessage");
       await publishOne({ url: "https://docs.astral.sh/ruff/rules/unused-import" });
 
@@ -239,6 +239,27 @@ describe("lib/linter-panel", () => {
         "https://docs.astral.sh/ruff/rules/unused-import",
       );
       expect(reveal).not.toHaveBeenCalled();
+    });
+
+    it("does not render an unsupported provider URL", async () => {
+      await publishOne({ url: "javascript:alert(1)" });
+
+      expect(cell().querySelector(".linter-more-info")).toBeNull();
+    });
+
+    it("reports a failure to open provider documentation", async () => {
+      const error = new Error("no browser");
+      spyOn(lumine.shell, "openExternal").and.rejectWith(error);
+      spyOn(lumine.notifications, "addWarning");
+      await publishOne({ url: "https://example.com/rule" });
+
+      cell().querySelector(".linter-more-info").click();
+      await conditionPromise(() => lumine.notifications.addWarning.calls.any());
+
+      expect(lumine.notifications.addWarning).toHaveBeenCalledWith(
+        "Unable to open the linter documentation.",
+        { detail: error.message, dismissable: true },
+      );
     });
   });
 
