@@ -62,6 +62,32 @@ describe("lib/status", () => {
     expect(rows[4].textContent).toContain(cmdOrCtrl("RMB"));
   });
 
+  it("keeps a populated status-bar tile before an editor exists", () => {
+    const tile = { destroy: jasmine.createSpy("destroy") };
+    const statusBar = {
+      addLeftTile: jasmine.createSpy("addLeftTile").and.returnValue(tile),
+    };
+    const noEditorFront = new Front();
+    const noEditorStatus = new StatusPanel(noEditorFront, statusBar);
+    noEditorFront.status = noEditorStatus;
+
+    expect(statusBar.addLeftTile).toHaveBeenCalledWith({ item: noEditorStatus, priority: 110 });
+    expect(noEditorStatus.counters.map((entry) => entry.severity.name)).toEqual([
+      "error",
+      "warning",
+      "info",
+      "hint",
+    ]);
+
+    noEditorStatus.setEditor({});
+    noEditorStatus.setEditor(null);
+    expect(statusBar.addLeftTile).toHaveBeenCalledTimes(1);
+
+    noEditorStatus.destroy();
+    expect(tile.destroy).toHaveBeenCalledTimes(1);
+    noEditorFront.dispose();
+  });
+
   it("counts each severity into its own tile", () => {
     messages = [message("error"), message("hint"), message("hint"), message("warning")];
     status.update();
