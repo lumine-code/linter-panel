@@ -28,9 +28,6 @@
   "engines": {
     "lumine": "^1.0.0"
   },
-  "backgroundTips": [
-    "You can read every lint message in the project in one sortable panel with {{ 'linter-panel:toggle-focus' | keystroke }}"
-  ],
   "deserializers": {
     "LinterPanel": "deserializePanel"
   },
@@ -38,6 +35,11 @@
     "linter.ui": {
       "versions": {
         "1.0.0": "provideLinterUI"
+      }
+    },
+    "background-tips.provider": {
+      "versions": {
+        "1.0.0": "provideBackgroundTips"
       }
     }
   },
