@@ -1,6 +1,6 @@
 const { StatusPanel } = require("../lib/status");
 const { Front } = require("../lib/front");
-const { fakeHub } = require("./fake-hub");
+const { fakeHub, SEVERITIES } = require("./fake-hub");
 
 const cmdOrCtrl = (button) => (process.platform === "darwin" ? `⌘${button}` : `Ctrl+${button}`);
 
@@ -111,6 +111,134 @@ describe("lib/status", () => {
     messages = [message("error")];
     status.update();
     expect(tileFor("error").counter.classList).toContain("text-error");
+  });
+
+  it("reuses current-file counts for an unchanged snapshot", () => {
+    const severity = jasmine.createSpy("severity").and.returnValue("error");
+    const diagnostic = message("error");
+    Object.defineProperty(diagnostic, "severity", { get: severity });
+    messages = [diagnostic];
+    status.update();
+    severity.calls.reset();
+
+    status.update();
+
+    expect(severity).not.toHaveBeenCalled();
+    expect(tileFor("error").label.textContent).toBe("1");
+  });
+
+  it("updates project tallies from deltas without recounting unchanged messages", () => {
+    const severity = jasmine.createSpy("severity").and.returnValue("error");
+    const error = message("error");
+    Object.defineProperty(error, "severity", { get: severity });
+    const warning = message("warning");
+    messages = [error, warning];
+    front.render({ messages });
+    front.setViewMode("project");
+    severity.calls.reset();
+    const hint = message("hint");
+    messages = [error, hint];
+
+    front.render({ added: [hint], removed: [warning], messages });
+
+    expect(severity).not.toHaveBeenCalled();
+    expect(tileFor("error").label.textContent).toBe("1");
+    expect(tileFor("warning").label.textContent).toBe("0");
+    expect(tileFor("hint").label.textContent).toBe("1");
+  });
+
+  it("keeps project counts across metadata-only replacement objects", () => {
+    const original = message("warning");
+    messages = [original];
+    front.render({ messages });
+    front.setViewMode("project");
+    const severity = jasmine.createSpy("severity").and.returnValue("warning");
+    const replacement = { ...original, description: "updated details" };
+    Object.defineProperty(replacement, "severity", { get: severity });
+    messages = [replacement];
+
+    front.render({ added: [], removed: [], updated: [replacement], messages });
+
+    expect(severity).not.toHaveBeenCalled();
+    expect(tileFor("warning").label.textContent).toBe("1");
+  });
+
+  it("recounts a full snapshot when the hub omits deltas", () => {
+    messages = [message("warning")];
+    front.render({ messages });
+    front.setViewMode("project");
+    messages = [message("error"), message("error")];
+
+    front.render({ messages });
+
+    expect(tileFor("warning").label.textContent).toBe("0");
+    expect(tileFor("error").label.textContent).toBe("2");
+  });
+
+  it("recounts when delta lengths do not describe the full snapshot", () => {
+    messages = [message("warning")];
+    front.render({ messages });
+    front.setViewMode("project");
+    messages = [message("error"), message("error")];
+
+    front.render({ added: [], removed: [], messages });
+
+    expect(tileFor("warning").label.textContent).toBe("0");
+    expect(tileFor("error").label.textContent).toBe("2");
+  });
+
+  it("recounts a current snapshot reused by an older hub without deltas", () => {
+    messages = [message("warning")];
+    status.update();
+    messages[0] = message("error");
+
+    front.render({ messages });
+
+    expect(tileFor("warning").label.textContent).toBe("0");
+    expect(tileFor("error").label.textContent).toBe("1");
+  });
+
+  it("recounts if a removal delta refers to an empty severity bucket", () => {
+    messages = [message("warning")];
+    front.render({ messages });
+    front.setViewMode("project");
+    const error = message("error");
+    messages = [error];
+
+    front.render({ added: [error], removed: [message("info")], messages });
+
+    expect(tileFor("warning").label.textContent).toBe("0");
+    expect(tileFor("error").label.textContent).toBe("1");
+    expect(tileFor("info").label.textContent).toBe("0");
+  });
+
+  it("takes current-file counts again after switching away from project mode", () => {
+    const own = message("warning");
+    messages = [own, message("error")];
+    front.hub.getCurrentMessages = () => [own];
+    front.render({ messages });
+    front.setViewMode("project");
+    expect(tileFor("error").label.textContent).toBe("1");
+
+    front.setViewMode("file");
+
+    expect(tileFor("error").label.textContent).toBe("0");
+    expect(tileFor("warning").label.textContent).toBe("1");
+  });
+
+  it("accepts a replaced severity vocabulary of the same size", () => {
+    messages = [message("constructor"), message("constructor")];
+    const hub = fakeHub({ messages: () => messages });
+    hub.getSeverities = () =>
+      SEVERITIES.map((severity, index) =>
+        index === 0 ? { ...severity, name: "constructor", label: "Constructor" } : severity,
+      );
+
+    front.attach(hub);
+
+    expect(tileFor("error")).toBeUndefined();
+    expect(tileFor("constructor").label.textContent).toBe("2");
+    expect(tileFor("warning").label.textContent).toBe("0");
   });
 
   describe("the quiet tier", () => {

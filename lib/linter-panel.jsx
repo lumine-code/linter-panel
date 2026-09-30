@@ -47,9 +47,9 @@ class LinterPanel {
     this._currentRowIndex = -1;
     // Track right-clicked row for context menu
     this._contextRow = null;
-    // The keyboard cursor, tracked as the message itself: identity survives
-    // re-sorts and refreshes, and a message that disappears takes the cursor
-    // with it. Rendered as a class from state — never patched into the DOM
+    // The keyboard cursor follows a message's key across replacement objects
+    // and re-sorts, and a message that disappears takes the cursor with it.
+    // Rendered as a class from state — never patched into the DOM
     // behind etch's back.
     this._focusedMessage = null;
     // Bind row click handler once for event delegation
@@ -270,37 +270,36 @@ class LinterPanel {
    */
   _updateCurrentRowHighlight() {
     if (!this.editor || !this.element) return;
-    // Runs on every cursor move as well as after every render, and walks every
-    // message to find the one under the cursor. There is no row to mark while
+    // Runs on every cursor move as well as after every render. There is no row to mark while
     // the panel is off screen, and the next render takes the highlight anyway.
     if (!this._isOnScreen()) return;
 
-    const messages = this._getMessages();
-    const sortedMessages = this._getSortedMessages(messages);
     const curpos = this.editor.getCursorBufferPosition();
     // In project mode the list spans every file, and only the active editor's
     // own messages can sit under its cursor. Which those are is the hub's
     // answer, not a path comparison of the panel's own devising.
-    const current = this.pkg.viewMode === "project" ? new Set(this.pkg.getCurrentMessages()) : null;
-
-    // Find which row (in visible filtered order) contains cursor
     let newRowIndex = -1;
-    let visibleIndex = 0;
-    for (let i = 0; i < sortedMessages.length; i++) {
-      const message = sortedMessages[i];
-      // Apply same visibility filters as render
-      if (!this.isSeverityVisible(message.severity)) continue;
-
-      if (current && !current.has(message)) {
-        visibleIndex++;
-        continue;
+    const candidates = this.pkg.getMessagesAtPosition?.(this.editor, curpos) ?? null;
+    if (candidates !== null) {
+      this._visibleMessages();
+      for (const message of candidates) {
+        const index = this._visibleCache.messageIndices.get(message);
+        if (index !== undefined && (newRowIndex < 0 || index < newRowIndex)) newRowIndex = index;
       }
-      const range = message.location.displayRange || message.location.position;
-      if (range.containsPoint(curpos)) {
-        newRowIndex = visibleIndex;
-        break;
+    } else {
+      // Older hubs can still provide the panel's original message-only handle.
+      const visible = this._visibleMessages();
+      const current =
+        this.pkg.viewMode === "project" ? new Set(this.pkg.getCurrentMessages()) : null;
+      for (let index = 0; index < visible.length; index++) {
+        const message = visible[index];
+        if (current && !current.has(message)) continue;
+        const range = message.location.displayRange || message.location.position;
+        if (range.containsPoint(curpos)) {
+          newRowIndex = index;
+          break;
+        }
       }
-      visibleIndex++;
     }
 
     // No change needed
@@ -803,14 +802,33 @@ class LinterPanel {
     // an array, since it is dense and read by position.
     const messages = [];
     const indices = [];
+    const messageIndices = new Map();
+    let focusedReplacement = null;
     for (let i = 0; i < sorted.length; i++) {
       const message = sorted[i];
       if (!this.isSeverityVisible(message.severity)) continue;
+      if (!messageIndices.has(message)) messageIndices.set(message, messages.length);
+      if (
+        !focusedReplacement &&
+        this._focusedMessage?.key != null &&
+        message.key === this._focusedMessage.key
+      ) {
+        focusedReplacement = message;
+      }
       messages.push(message);
       indices.push(i);
     }
 
-    this._visibleCache = { sorted, generation: this._filterGeneration, messages, indices };
+    if (this._focusedMessage && !messageIndices.has(this._focusedMessage)) {
+      this._focusedMessage = focusedReplacement;
+    }
+    this._visibleCache = {
+      sorted,
+      generation: this._filterGeneration,
+      messages,
+      indices,
+      messageIndices,
+    };
     return messages;
   }
 
@@ -924,7 +942,7 @@ class LinterPanel {
     const visible = this._visibleMessages();
     if (!visible.length) return;
     const clamp = (index) => Math.min(visible.length - 1, Math.max(0, index));
-    const focusedIndex = this._focusedMessage ? visible.indexOf(this._focusedMessage) : -1;
+    const focusedIndex = this._visibleCache.messageIndices.get(this._focusedMessage) ?? -1;
     let index;
     if (focusedIndex >= 0) {
       index = clamp(focusedIndex + delta);
@@ -932,7 +950,7 @@ class LinterPanel {
       // First press: step off the current row when there is one, enter the
       // list from the end the key came from otherwise.
       const current = this._currentMessage();
-      const currentIndex = current ? visible.indexOf(current) : -1;
+      const currentIndex = this._visibleCache.messageIndices.get(current) ?? -1;
       if (currentIndex >= 0) {
         index = clamp(currentIndex + delta);
       } else {
@@ -952,6 +970,7 @@ class LinterPanel {
 
   // Enter needs a cursor, jumps to its message, and takes the cursor with it.
   _confirmFocused() {
+    this._visibleMessages();
     const message = this._focusedMessage;
     if (!message) return;
     this._setFocusedMessage(null);
@@ -1005,7 +1024,8 @@ class LinterPanel {
 
   scrollToFocused() {
     if (!this._focusedMessage) return;
-    this._scrollIndexIntoView(this._visibleMessages().indexOf(this._focusedMessage));
+    this._visibleMessages();
+    this._scrollIndexIntoView(this._visibleCache.messageIndices.get(this._focusedMessage) ?? -1);
   }
 }
 

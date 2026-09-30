@@ -43,4 +43,21 @@ describe("lib/front", () => {
 
     expect(seen[seen.length - 1]).toBe(editor);
   });
+
+  it("keeps cursor lookup optional for hubs with only the original handle", () => {
+    expect(front.getMessagesAtPosition(null, { row: 0, column: 0 })).toBeNull();
+  });
+
+  it("forwards indexed cursor lookup without scanning messages itself", () => {
+    const hub = fakeHub();
+    const position = { row: 3, column: 2 };
+    const messages = [{ key: "diagnostic" }];
+    hub.getMessagesAtPosition = jasmine
+      .createSpy("getMessagesAtPosition")
+      .and.returnValue(messages);
+    front.attach(hub);
+
+    expect(front.getMessagesAtPosition(null, position)).toBe(messages);
+    expect(hub.getMessagesAtPosition).toHaveBeenCalledOnceWith(null, position);
+  });
 });

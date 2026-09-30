@@ -124,6 +124,141 @@ describe("lib/linter-panel", () => {
       await panel.update();
       expect(focusedRows()).toBe(0);
     });
+
+    it("keeps focus on the latest object for an unchanged diagnostic key", async () => {
+      await publish(["error", "warning"]);
+      panel._setFocusedMessage(messages[0]);
+      await panel.update();
+      const original = messages[0];
+      const replacement = { ...original, description: "latest details" };
+      messages = [replacement, messages[1]];
+      front.render({ added: [], removed: [], updated: [replacement], messages });
+      await panel.update();
+
+      expect(panel._focusedMessage).toBe(replacement);
+      expect(focusedText()).toBe(original.excerpt);
+      expect(panel.element.querySelector(".linter-row.focused .linter-detail").textContent).toBe(
+        "latest details",
+      );
+      const reveal = spyOn(front, "revealMessage");
+      panel._confirmFocused();
+      expect(reveal).toHaveBeenCalledOnceWith(replacement);
+    });
+
+    it("drops keyboard focus when its message is filtered out", async () => {
+      await publish(["error", "warning"]);
+      panel._setFocusedMessage(messages[0]);
+      await panel.update();
+
+      panel.toggleVisibility("error");
+      await panel.update();
+
+      expect(panel._focusedMessage).toBeNull();
+      const reveal = spyOn(front, "revealMessage");
+      panel._confirmFocused();
+      expect(reveal).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("the indexed cursor highlight", () => {
+    let editor;
+
+    beforeEach(async () => {
+      editor = await lumine.workspace.open();
+      editor.setText("a\nb\nc\n");
+      editor.setCursorBufferPosition([1, 0]);
+      cursorEditor = editor;
+    });
+
+    afterEach(() => editor.destroy());
+
+    const currentMessage = () => panel._currentMessage();
+
+    it("does not read other diagnostic ranges during a cursor update", async () => {
+      messages = normalize(Array.from({ length: 2000 }, (_, row) => message("warning", row)));
+      const target = messages[1];
+      const query = jasmine.createSpy("getMessagesAtPosition").and.returnValue([target]);
+      front.hub.getMessagesAtPosition = query;
+      const reads = messages.map((entry) => {
+        const read = jasmine.createSpy("displayRange").and.throwError("range scanned");
+        Object.defineProperty(entry.location, "displayRange", { get: read });
+        return read;
+      });
+      front.setEditor();
+      front.render({ messages });
+      await panel.update();
+      query.calls.reset();
+
+      panel._updateCurrentRowHighlight();
+
+      expect(query).toHaveBeenCalledOnceWith(editor, editor.getCursorBufferPosition());
+      expect(reads.every((read) => read.calls.count() === 0)).toBe(true);
+      expect(currentMessage()).toBe(target);
+    });
+
+    it("takes the first visible candidate in the selected sort order", async () => {
+      messages = normalize([message("warning", 1), message("error", 1)]);
+      const [warning, error] = messages;
+      front.hub.getMessagesAtPosition = () => [warning, error];
+      front.setEditor();
+      front.render({ messages });
+      await panel.update();
+      expect(currentMessage()).toBe(error);
+
+      panel.setSortMethod("severity");
+      await panel.update();
+      expect(currentMessage()).toBe(warning);
+
+      panel.toggleVisibility("warning");
+      await panel.update();
+      expect(currentMessage()).toBe(error);
+      panel.toggleVisibility("error");
+      await panel.update();
+      expect(currentMessage()).toBeNull();
+    });
+
+    it("highlights only the queried editor's candidate in project mode", async () => {
+      const own = message("warning", 1);
+      const foreign = message("error", 1);
+      foreign.location.file = "/b.js";
+      messages = normalize([foreign, own]);
+      front.hub.getCurrentMessages = () => [own];
+      front.hub.getMessagesAtPosition = () => [own];
+      front.setEditor();
+      front.render({ messages });
+      front.setViewMode("project");
+      await panel.update();
+
+      expect(currentMessage()).toBe(own);
+      expect(panel._currentRowIndex).toBe(1);
+    });
+
+    it("accepts an empty indexed result without falling back to range scans", async () => {
+      messages = normalize([message("warning", 1)]);
+      front.hub.getMessagesAtPosition = () => [];
+      const range = jasmine.createSpy("displayRange").and.throwError("fallback scanned");
+      Object.defineProperty(messages[0].location, "displayRange", { get: range });
+      front.setEditor();
+      front.render({ messages });
+      await panel.update();
+
+      expect(currentMessage()).toBeNull();
+      expect(range).not.toHaveBeenCalled();
+    });
+
+    it("uses the original current-file fallback when the hub has no index", async () => {
+      const own = message("warning", 1);
+      const foreign = message("error", 1);
+      foreign.location.file = "/b.js";
+      messages = normalize([foreign, own]);
+      front.hub.getCurrentMessages = () => [own];
+      front.setEditor();
+      front.render({ messages });
+      front.setViewMode("project");
+      await panel.update();
+
+      expect(currentMessage()).toBe(own);
+    });
   });
 
   describe("the filter header", () => {
