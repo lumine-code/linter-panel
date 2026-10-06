@@ -71,7 +71,7 @@ describe("lib/status", () => {
     const noEditorStatus = new StatusPanel(noEditorFront, statusBar);
     noEditorFront.status = noEditorStatus;
 
-    expect(statusBar.addLeftTile).toHaveBeenCalledWith({ item: noEditorStatus, priority: 110 });
+    expect(statusBar.addLeftTile).toHaveBeenCalledWith({ item: noEditorStatus, priority: 210 });
     expect(noEditorStatus.counters.map((entry) => entry.severity.name)).toEqual([
       "error",
       "warning",
