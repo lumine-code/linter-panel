@@ -540,6 +540,34 @@ describe("lib/linter-panel", () => {
       expect(update).not.toHaveBeenCalled();
     });
 
+    it("preserves overlapping row nodes and their positions across scroll blocks", async () => {
+      const container = scrollContainer();
+      const rowAt = (index) =>
+        container.querySelector(`.linter-row[data-visible-index="${index}"]`);
+      const row = rowAt(40);
+      const excerpt = row.querySelector(".linter-excerpt");
+      const content = excerpt.firstChild;
+      const documentTop = row.getBoundingClientRect().top + container.scrollTop;
+
+      // Crossing this boundary adds a leading spacer and removes the first ten
+      // rows. The rows both windows contain must keep their painted contents.
+      container.scrollTop = 50 * panel._rowHeight;
+      await panel.update();
+
+      expect(rowAt(40)).toBe(row);
+      expect(row.querySelector(".linter-excerpt")).toBe(excerpt);
+      expect(excerpt.firstChild).toBe(content);
+      expect(
+        Math.abs(row.getBoundingClientRect().top + container.scrollTop - documentTop),
+      ).toBeLessThan(1);
+
+      container.scrollTop = 0;
+      await panel.update();
+
+      expect(rowAt(40)).toBe(row);
+      expect(excerpt.firstChild).toBe(content);
+    });
+
     it("re-renders for a scroll that does change the window", () => {
       const update = spyOn(panel, "update").and.callThrough();
       scrollContainer().scrollTop = 2000 * panel._rowHeight;

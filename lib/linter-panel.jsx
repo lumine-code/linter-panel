@@ -661,6 +661,9 @@ class LinterPanel {
 
       const item = (
         <tr
+          // Preserve painted rows when the window moves. A diagnostic key can
+          // repeat; the absolute visible index identifies this row's slot.
+          key={`linter-row:${visibleIndex}`}
           class={
             "linter-row " +
             (severity ? severity.name : "unknown") +
@@ -686,12 +689,22 @@ class LinterPanel {
     const rowHeight = this._rowHeight;
     const rows = [];
     if (rowHeight && start > 0) {
-      rows.push(<tr class="linter-spacer" style={`height: ${start * rowHeight}px`} />);
+      rows.push(
+        <tr
+          key="linter-spacer-before"
+          class="linter-spacer"
+          style={`height: ${start * rowHeight}px`}
+        />,
+      );
     }
     rows.push(...data);
     if (rowHeight && end < visible.length) {
       rows.push(
-        <tr class="linter-spacer" style={`height: ${(visible.length - end) * rowHeight}px`} />,
+        <tr
+          key="linter-spacer-after"
+          class="linter-spacer"
+          style={`height: ${(visible.length - end) * rowHeight}px`}
+        />,
       );
     }
 
