@@ -409,7 +409,7 @@ describe("lib/linter-panel", () => {
   // `render` addresses a row by its index in the visible list, so a row that is
   // not in the DOM still has to be findable, scrollable to and highlightable.
   describe("with more messages than fit on screen", () => {
-    const TOTAL = 5000;
+    const TOTAL = 9300;
 
     const rows = () => Array.from(panel.element.querySelectorAll(".linter-row"));
     const renderedIndices = () =>
@@ -453,9 +453,62 @@ describe("lib/linter-panel", () => {
     it("keeps the scroll height of the whole list", () => {
       const rowHeight = panel._rowHeight;
       expect(rowHeight).toBeGreaterThan(0);
-      // Within one row: the spacers are integer pixels and the header is not
-      // part of the scrolling area.
+      // scrollHeight rounds to pixels; spacers retain fractional row heights.
+      // The header is not part of the scrolling area.
       expect(Math.abs(scrollContainer().scrollHeight - TOTAL * rowHeight)).toBeLessThan(rowHeight);
+    });
+
+    it("measures fractional row heights without rounding every spacer", () => {
+      panel._rowHeight = 0;
+      const row = rows()[0];
+      const bounds = row.getBoundingClientRect();
+      spyOn(row, "getBoundingClientRect").and.returnValue({ ...bounds, height: 25.375 });
+
+      expect(panel._measureRowHeight()).toBe(25.375);
+    });
+
+    it("keeps a render window inside a list that shrinks below its old scroll position", async () => {
+      scrollContainer().scrollTop = 8000 * panel._rowHeight;
+      await panel.update();
+      messages = messages.slice(0, 103);
+      front.render({ messages });
+      await panel.update();
+      await panel.update();
+
+      expect(panel._window.start).toBeLessThan(panel._window.end);
+      expect(panel._window.end).toBeLessThanOrEqual(messages.length);
+      expect(renderedIndices()).toContain(102);
+      expect(scrollContainer().scrollHeight).toBeLessThan((messages.length + 1) * panel._rowHeight);
+    });
+
+    it("keeps a fast wheel-sized jump covered until the next render", () => {
+      const container = scrollContainer();
+      container.scrollTop = 800;
+      const bounds = container.getBoundingClientRect();
+      const rendered = rows();
+
+      expect(rendered[0].getBoundingClientRect().top).toBeLessThanOrEqual(bounds.top);
+      expect(rendered[rendered.length - 1].getBoundingClientRect().bottom).toBeGreaterThanOrEqual(
+        bounds.bottom,
+      );
+    });
+
+    it("keeps every row one line high with long providers and block excerpts", async () => {
+      panel.element.style.width = "600px";
+      messages = normalize([
+        message("warning"),
+        {
+          ...message("warning", 1),
+          linterName: "Basedpyright Language Server",
+          excerpt: "first paragraph\n\nsecond paragraph",
+        },
+      ]);
+      front.render({ messages });
+      await panel.update();
+
+      const heights = rows().map((row) => row.getBoundingClientRect().height);
+      expect(heights[1]).toBe(heights[0]);
+      expect(heights[0]).toBeLessThan(35);
     });
 
     it("renders the rows around wherever it has been scrolled to", async () => {
@@ -471,6 +524,17 @@ describe("lib/linter-panel", () => {
 
     it("does not re-render for a scroll that does not change the window", () => {
       const update = spyOn(panel, "update").and.callThrough();
+      panel._onScroll();
+
+      expect(update).not.toHaveBeenCalled();
+    });
+
+    it("reuses the rendered block for small wheel steps", async () => {
+      scrollContainer().scrollTop = 100 * panel._rowHeight;
+      await panel.update();
+      const update = spyOn(panel, "update").and.callThrough();
+
+      scrollContainer().scrollTop = 104 * panel._rowHeight;
       panel._onScroll();
 
       expect(update).not.toHaveBeenCalled();
@@ -550,8 +614,8 @@ describe("lib/linter-panel", () => {
         expect(panel._currentMessage()).toBe(messages[2000]);
 
         for (const row of [4000, 0]) {
-          const scrollTop = row * panel._rowHeight;
-          scrollContainer().scrollTop = scrollTop;
+          scrollContainer().scrollTop = row * panel._rowHeight;
+          const scrollTop = scrollContainer().scrollTop;
           panel._onScroll();
           await panel.update();
 

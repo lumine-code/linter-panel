@@ -669,7 +669,9 @@ class LinterPanel {
           dataset={{ index: i, visibleIndex: visibleIndex }}
         >
           <td class={scls}>{stxt}</td>
-          <td class="linter-provider">{message.linterName}</td>
+          <td class="linter-provider" title={message.linterName}>
+            {message.linterName}
+          </td>
           <td class="linter-position">{positionContent}</td>
           <td class="linter-description">{descriptionContent}</td>
         </tr>
@@ -854,7 +856,7 @@ class LinterPanel {
   _measureRowHeight() {
     if (this._rowHeight) return this._rowHeight;
     const row = this.element?.querySelector(".linter-row");
-    const height = row?.offsetHeight ?? 0;
+    const height = row?.getBoundingClientRect().height ?? 0;
     if (height > 0) this._rowHeight = height;
     return this._rowHeight;
   }
@@ -862,7 +864,12 @@ class LinterPanel {
   // Extra rows rendered above and below the viewport, so a scroll of a row or
   // two costs nothing.
   static get OVERSCAN() {
-    return 8;
+    return 40;
+  }
+
+  // Recycle rows in blocks so small wheel steps share the same render window.
+  static get BLOCK_ROWS() {
+    return 10;
   }
 
   // How many rows the very first render puts up. There is no row to measure
@@ -910,10 +917,17 @@ class LinterPanel {
       return { start: 0, end: Math.min(total, LinterPanel.BOOTSTRAP_ROWS) };
     }
 
-    const first = Math.floor(container.scrollTop / rowHeight);
     const count = Math.ceil(container.clientHeight / rowHeight);
-    const start = Math.max(0, first - LinterPanel.OVERSCAN);
-    const end = Math.min(total, first + count + LinterPanel.OVERSCAN);
+    // A resize or a shorter message list can leave scrollTop beyond the new
+    // list until the DOM is patched. Keep the rendered slice inside the list
+    // so its spacers cannot perpetuate that stale scroll height.
+    const first = Math.min(
+      Math.max(0, total - count),
+      Math.max(0, Math.floor(container.scrollTop / rowHeight)),
+    );
+    const block = LinterPanel.BLOCK_ROWS;
+    const start = Math.max(0, Math.floor((first - LinterPanel.OVERSCAN) / block) * block);
+    const end = Math.min(total, Math.ceil((first + count + LinterPanel.OVERSCAN) / block) * block);
     return { start, end };
   }
 

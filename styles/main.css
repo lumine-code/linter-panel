@@ -84,15 +84,20 @@
       min-height: 0;
       overflow-y: auto;
       overflow-x: hidden;
+      /* The virtual window owns its scroll coordinates. Anchoring a recycled
+       * row would add the spacer's height change to scrollTop and start another
+       * scroll/render cycle after the wheel has already stopped. */
+      overflow-anchor: none;
+    }
+
+    > thead > tr,
+    > tbody > .linter-row {
+      display: grid;
+      grid-template-columns: 8% 12% 18% minmax(0, 1fr);
+      width: 100%;
     }
 
     > thead,
-    > tbody tr {
-      display: table;
-      width: 100%;
-      table-layout: fixed;
-    }
-
     > tbody {
       display: block;
     }
@@ -101,6 +106,7 @@
 
     th,
     td {
+      min-width: 0;
       padding: 0.3em 0.5em;
       border: 1px solid var(--base-border-color);
       border-top: 1px;
@@ -144,21 +150,6 @@
         font-weight: bold;
         background-color: rgb(from var(--text-color-highlight) r g b / 0.15);
       }
-    }
-
-    th:nth-child(1),
-    td:nth-child(1) {
-      width: 8%;
-    }
-
-    th:nth-child(2),
-    td:nth-child(2) {
-      width: 12%;
-    }
-
-    th:nth-child(3),
-    td:nth-child(3) {
-      width: 18%;
     }
 
     /* Core defines .text-error, .text-warning and .text-info as utility
@@ -302,6 +293,14 @@
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
+
+        /* Excerpts are Markdown fragments. Their paragraphs, lists and code
+         * blocks share this one line instead of expanding the virtual row. */
+        * {
+          display: inline;
+          margin: 0;
+          white-space: inherit;
+        }
       }
 
       .linter-detail {
@@ -347,6 +346,7 @@
      * so the scrollbar reflects the whole list. It has no cells and must not
      * pick up any of the row styling. */
     .linter-spacer {
+      display: block;
       padding: 0;
       border: none;
       background: none;
@@ -358,7 +358,16 @@
        * work out which rows the viewport is showing. Change it here and the
        * arithmetic follows; hard-code a height anywhere else and it will not. */
       height: var(--linter-row-height);
+      grid-template-rows: minmax(0, 1fr);
       box-sizing: border-box;
+      overflow: hidden;
+
+      > td {
+        min-height: 0;
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+      }
 
       /* Transparent by default so a row of unknown severity still gets neutral
        * hover feedback: rgb(from transparent r g b / 0.08) is a faint black. */
