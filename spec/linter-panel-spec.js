@@ -538,6 +538,92 @@ describe("lib/linter-panel", () => {
       expect(parseInt(current.dataset.visibleIndex, 10)).toBe(2000);
       editor.destroy();
     });
+
+    it("lets the current row leave the viewport and restores its highlight on return", async () => {
+      const editor = await lumine.workspace.open();
+      try {
+        editor.setText("x\n".repeat(TOTAL));
+        editor.setCursorBufferPosition([2000, 0]);
+        panel.setEditor(editor);
+        await panel.update();
+        await panel.update();
+        expect(panel._currentMessage()).toBe(messages[2000]);
+
+        for (const row of [4000, 0]) {
+          const scrollTop = row * panel._rowHeight;
+          scrollContainer().scrollTop = scrollTop;
+          panel._onScroll();
+          await panel.update();
+
+          expect(scrollContainer().scrollTop).toBe(scrollTop);
+          expect(renderedIndices()).not.toContain(2000);
+          expect(panel._currentRowIndex).toBe(2000);
+          expect(panel._currentMessage()).toBe(messages[2000]);
+          expect(panel.element.querySelector(".linter-row.current")).toBeNull();
+        }
+
+        scrollContainer().scrollTop = 2000 * panel._rowHeight;
+        panel._onScroll();
+        await panel.update();
+
+        expect(panel._currentMessage()).toBe(messages[2000]);
+        expect(panel.element.querySelector(".linter-row.current")?.dataset.visibleIndex).toBe(
+          "2000",
+        );
+      } finally {
+        editor.destroy();
+      }
+    });
+
+    it("reveals a different cursor row after the user scrolls away", async () => {
+      const editor = await lumine.workspace.open();
+      try {
+        editor.setText("x\n".repeat(TOTAL));
+        editor.setCursorBufferPosition([2000, 0]);
+        panel.setEditor(editor);
+        await panel.update();
+        await panel.update();
+        scrollContainer().scrollTop = 4000 * panel._rowHeight;
+        panel._onScroll();
+        await panel.update();
+
+        editor.setCursorBufferPosition([2500, 0]);
+        window.advanceClock(100);
+        await panel.update();
+
+        const container = scrollContainer();
+        const rowTop = 2500 * panel._rowHeight;
+        expect(container.scrollTop).toBeLessThanOrEqual(rowTop);
+        expect(container.scrollTop + container.clientHeight).toBeGreaterThanOrEqual(
+          rowTop + panel._rowHeight,
+        );
+        expect(panel._currentMessage()).toBe(messages[2500]);
+      } finally {
+        editor.destroy();
+      }
+    });
+
+    it("starts keyboard navigation from the current message outside the viewport", async () => {
+      const editor = await lumine.workspace.open();
+      try {
+        editor.setText("x\n".repeat(TOTAL));
+        editor.setCursorBufferPosition([2000, 0]);
+        panel.setEditor(editor);
+        await panel.update();
+        await panel.update();
+        scrollContainer().scrollTop = 4000 * panel._rowHeight;
+        panel._onScroll();
+        await panel.update();
+        expect(panel.element.querySelector(".linter-row.current")).toBeNull();
+
+        panel._moveFocus(1);
+        await panel.update();
+
+        expect(panel._focusedMessage).toBe(messages[2001]);
+      } finally {
+        editor.destroy();
+      }
+    });
   });
 
   // The panel is built at activation and updated on every publish, whether or

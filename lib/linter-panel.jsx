@@ -43,7 +43,7 @@ class LinterPanel {
     this._rowHeight = 0;
     this._window = { start: 0, end: 0 };
     this._onScroll = this._onScroll.bind(this);
-    // Track current highlighted row for CSS-only updates
+    // The current row in the visible list, even outside the rendered viewport.
     this._currentRowIndex = -1;
     // Track right-clicked row for context menu
     this._contextRow = null;
@@ -302,8 +302,10 @@ class LinterPanel {
       }
     }
 
-    // No change needed
-    if (newRowIndex === this._currentRowIndex) return;
+    // A redraw may have replaced the row even when the current message is the
+    // same. Restore its highlight, but only a changed row should reveal itself:
+    // a scroll redraw must not pull the user back to the editor's cursor.
+    const currentRowChanged = newRowIndex !== this._currentRowIndex;
 
     const tbody = this.element.querySelector("tbody");
     if (!tbody) return;
@@ -331,7 +333,7 @@ class LinterPanel {
     }
 
     this._currentRowIndex = newRowIndex;
-    this.scrollToCurrent();
+    if (currentRowChanged) this.scrollToCurrent();
   }
 
   /**
@@ -458,10 +460,10 @@ class LinterPanel {
   }
 
   update() {
-    // Clear .current and .focused before re-render since etch doesn't know about them
+    // Etch does not own .current. Clear the DOM class before patching, but keep
+    // its logical index so restoring the highlight does not also reset scroll.
     const currentRow = this.element?.querySelector(".linter-row.current");
     if (currentRow) currentRow.classList.remove("current");
-    this._currentRowIndex = -1;
     return etch.update(this).then(() => {
       // The first render had no row to measure and put up a bootstrap window.
       // Now that one exists, take the real window rather than waiting for a
@@ -739,9 +741,8 @@ class LinterPanel {
       if (refocus) {
         prev.focus();
       }
-      // Nothing was rendered while the panel was off screen, so this is the
-      // render that has rows. readAfterUpdate takes the current row from it and
-      // scrolls to it, which is what this used to ask for directly.
+      // Restore the rows and their current highlight after showing the panel.
+      // Keep the scroll position unless the current row has changed.
       return this.update();
     });
   }
@@ -925,12 +926,10 @@ class LinterPanel {
     this.update();
   }
 
-  // The message of the `.current` row, resolved through the row's index —
-  // the highlight itself is maintained by _updateCurrentRowHighlight.
+  // Keyboard navigation starts from the editor's current message even when
+  // manual scrolling has moved its row outside the rendered viewport.
   _currentMessage() {
-    const row = this.element.querySelector(".linter-row.current");
-    if (!row || row.dataset.index === undefined) return null;
-    return this._getSortedMessages(this._getMessages())[parseInt(row.dataset.index, 10)] || null;
+    return this._visibleMessages()[this._currentRowIndex] ?? null;
   }
 
   _setFocusedMessage(message) {
