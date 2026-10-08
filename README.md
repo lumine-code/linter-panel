@@ -2,6 +2,8 @@
 
 Show lint messages in a sortable panel and on the status bar.
 
+Fork of [steelbrain/linter-ui-default](https://github.com/steelbrain/linter-ui-default).
+
 The front end for the [linter](https://github.com/lumine-code/linter) package. Without it the linter still underlines, marks the gutter and answers hovers; with it every message the project holds is one list away.
 
 ## Features
